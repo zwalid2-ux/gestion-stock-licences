@@ -1,1 +1,1 @@
-https://else-satisfaction-peripherals-tobago.trycloudflare.com
+https://api.trycloudflare.com

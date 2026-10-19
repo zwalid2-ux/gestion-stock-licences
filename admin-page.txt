@@ -1,5 +1,5 @@
-https://controllers-biotechnology-bee-interpretation.trycloudflare.com/admin
+https://alfred-similarly-downloaded-consumption.trycloudflare.com/admin
 
 Tableau de bord des licences STOKY Pro (connexion administrateur requise).
 Page stable : https://zwalid2-ux.github.io/gestion-stock-licences/gestion-licence.html
-Mis à jour : 19/10/2026 01:59
+Mis à jour : 19/10/2026 02:34

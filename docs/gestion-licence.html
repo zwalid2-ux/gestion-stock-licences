@@ -6,44 +6,67 @@
 <meta name="robots" content="noindex, nofollow">
 <title>STOKY Pro - Licences (en ligne)</title>
 <style>
-body{font:15px Segoe UI,sans-serif;margin:0;background:#f4f6fa;color:#172033}
-header{background:#202a36;color:white;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+*{box-sizing:border-box}
+body{font:14px Segoe UI,system-ui,sans-serif;margin:0;background:#f4f6fa;color:#172033;-webkit-text-size-adjust:100%}
+header{background:#202a36;color:white;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 header button{background:#475569;color:white}
-header a{color:#93c5fd}
-main{padding:22px 24px;max-width:1800px;margin:auto}
-button{padding:7px 12px;border:0;border-radius:5px;cursor:pointer;margin-right:5px;font-size:13px}
-.actions{min-width:210px}.actions button{margin-bottom:5px}input,select{padding:8px;border:1px solid #aab4c3;border-radius:5px}
-.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-.card{padding:12px 14px;background:white;border:1px solid #dbe1ea;border-radius:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.trial{background:#d97706;color:white}.approve{background:#15803d;color:white}.reject,.revoke,.delete{background:#b91c1c;color:white}.neutral{background:#1d4ed8;color:white}
-table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;padding:10px;border-bottom:1px solid #dbe1ea;vertical-align:middle}th{background:#e8edf5;font-size:13px}
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
-.b-Pending{background:#fef3c7;color:#92400e}.b-Approved{background:#dcfce7;color:#166534}.b-Expired{background:#e5e7eb;color:#374151}.b-Rejected,.b-Revoked{background:#fee2e2;color:#991b1b}.b-ReviewRequired{background:#fee2e2;color:#991b1b}
-.presence{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.led{width:11px;height:11px;border-radius:50%;display:inline-block;background:#dc2626}.led.online{background:#16a34a;box-shadow:0 0 0 3px #dcfce7}
-code{font-size:12px;overflow-wrap:anywhere}#message{margin:10px 0;color:#166534;min-height:18px}small{color:#5b6472}
+header a{color:#93c5fd;overflow-wrap:anywhere}
+main{padding:12px 14px;max-width:1800px;margin:auto}
+button{padding:6px 10px;border:0;border-radius:6px;cursor:pointer;margin:0;font-size:13px;line-height:1.3}
+input,select{padding:7px 8px;border:1px solid #aab4c3;border-radius:6px;font-size:14px;max-width:100%}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.card{padding:8px 10px;background:white;border:1px solid #dbe1ea;border-radius:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.trial{background:#d97706;color:white}.approve{background:#15803d;color:white}.reject,.revoke,.delete{background:#b91c1c;color:white}.neutral{background:#1d4ed8;color:white}.info{background:#e2e8f0;color:#172033}
+/* Boutons d'action du tableau : petits, emoji seul, libellé dans l'infobulle */
+.actions{white-space:nowrap}.actions .ic{width:32px;height:30px;padding:0;font-size:15px;margin:2px 2px 2px 0;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+.ic small{font-size:9px;font-weight:700;margin-left:1px;color:inherit}
+table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;padding:8px;border-bottom:1px solid #dbe1ea;vertical-align:middle;font-size:13px}th{background:#e8edf5;font-size:12px;white-space:nowrap}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.b-Pending{background:#f59e0b;color:#1f1300;animation:pulse 1.6s ease-in-out infinite}.b-Approved{background:#dcfce7;color:#166534}.b-Expired{background:#e5e7eb;color:#374151}.b-Rejected,.b-Revoked{background:#fee2e2;color:#991b1b}.b-ReviewRequired{background:#fee2e2;color:#991b1b}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #f59e0b66}50%{box-shadow:0 0 0 5px #f59e0b00}}
+tr.pending{background:#fffbeb}tr.pending td:first-child{border-left:4px solid #f59e0b}
+.presence{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.led{width:10px;height:10px;border-radius:50%;display:inline-block;background:#dc2626}.led.online{background:#16a34a;box-shadow:0 0 0 3px #dcfce7}
+code{font-size:12px;overflow-wrap:anywhere}#message{margin:8px 0;color:#166534;min-height:18px;font-size:13px}small{color:#5b6472}
 .table-wrap{overflow:auto;border-radius:8px;background:white;border:1px solid #dbe1ea}.duplicate{background:#fff7ed}.duplicate-note{color:#9a3412;font-size:12px;font-weight:600}
-.table-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:10px 12px;background:#f8fafc;border-bottom:1px solid #dbe1ea}.table-tools label{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600}
+.table-tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 10px;background:#f8fafc;border-bottom:1px solid #dbe1ea}.table-tools label{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600;flex-wrap:wrap}
 .seen{white-space:nowrap}.seen small{display:block}.warn{color:#b45309;font-weight:600}
-dialog{width:min(700px,90vw);border:1px solid #dbe1ea;border-radius:12px;padding:22px}dialog::backdrop{background:#17203366}
-dialog label{display:block;margin-top:10px}dialog input{width:95%}dialog pre{white-space:pre-wrap;font:13px Segoe UI;line-height:1.7}
+#pendingCount{background:#f59e0b;color:#1f1300;border-radius:10px;padding:2px 10px;font-weight:700;font-size:13px}
+dialog{width:min(640px,94vw);border:1px solid #dbe1ea;border-radius:12px;padding:16px;max-height:92vh;overflow:auto}dialog::backdrop{background:#17203366}
+dialog label{display:block;margin-top:10px}dialog input{width:100%}dialog pre{white-space:pre-wrap;font:13px Segoe UI;line-height:1.6;overflow-wrap:anywhere}
+dialog h2{font-size:17px;margin:0 0 8px}dialog button{margin:6px 6px 0 0}
 button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
-#login{display:flex;justify-content:center;align-items:center;min-height:70vh}
-#login form{background:white;padding:32px 36px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08);width:360px}
-#login h1{font-size:20px;margin:0 0 6px}#login p.sub{margin:0 0 18px;color:#5b6472;font-size:13px}
-#login label{display:block;font-weight:600;margin:12px 0 4px;font-size:13px}#login input{width:100%;box-sizing:border-box}
-#login button{margin-top:18px;width:100%;padding:10px;background:#1d4ed8;color:white;font-weight:600}
+#login{display:flex;justify-content:center;align-items:center;min-height:70vh;padding:12px}
+#login form{background:white;padding:24px 22px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08);width:100%;max-width:380px}
+#login h1{font-size:19px;margin:0 0 6px}#login p.sub{margin:0 0 14px;color:#5b6472;font-size:13px}
+#login label{display:block;font-weight:600;margin:12px 0 4px;font-size:13px}#login input{width:100%}
+#login button{margin-top:16px;width:100%;padding:11px;background:#1d4ed8;color:white;font-weight:600;font-size:15px}
 #login .error{background:#fee2e2;color:#991b1b;padding:8px 10px;border-radius:6px;font-size:13px;margin-top:12px}
-#serverState{font-size:12px;color:#cbd5e1}
+#serverState{font-size:12px;color:#cbd5e1;overflow-wrap:anywhere}
 .hidden{display:none!important}
+/* Téléphone : chaque installation devient une carte, les en-têtes de colonnes disparaissent */
+@media (max-width:900px){
+  header{padding:8px 10px}main{padding:8px}
+  .bar .card{width:100%}.bar input,.bar select{flex:1 1 140px;min-width:0}#requestId{width:100%!important}
+  .table-tools label{width:100%}.table-tools input{flex:1;min-width:0}
+  table,tbody,tr,td{display:block;width:100%}thead{display:none}
+  tr{border:1px solid #dbe1ea;border-radius:10px;margin:8px;background:white;padding:4px 0}
+  tr.pending{border-color:#f59e0b;box-shadow:0 0 0 2px #fde68a}
+  td{border:0;padding:5px 10px;display:flex;gap:8px;align-items:flex-start}
+  td::before{content:attr(data-label);flex:0 0 108px;color:#5b6472;font-size:11px;font-weight:600;text-transform:uppercase;padding-top:2px}
+  td.actions{flex-wrap:wrap;white-space:normal}td.actions::before{flex-basis:100%;padding-top:0}
+  .seen{white-space:normal}.seen small{display:inline;margin-left:6px}
+  tr.pending td:first-child{border-left:0}
+}
+@media (max-width:480px){td::before{flex-basis:92px}.actions .ic{width:36px;height:34px;font-size:16px}}
 </style>
 </head>
 <body>
 <header>
-  <div><b>STOKY Pro</b> — abonnés et licences (page en ligne)<br>
+  <div><b>STOKY Pro</b> — licences<br>
     <small id="serverState">🌐 Serveur : recherche de l'adresse courante…</small></div>
   <div id="headerActions" class="hidden">
-    <button type="button" onclick="refreshServer(true)">Actualiser l'adresse du serveur</button>
-    <button type="button" onclick="logout()">Déconnexion</button>
+    <button type="button" class="ic" style="width:auto;padding:0 10px" onclick="refreshServer(true)" title="Actualiser l'adresse du serveur">🔄</button>
+    <button type="button" class="ic" style="width:auto;padding:0 10px" onclick="logout()" title="Déconnexion">🚪</button>
   </div>
 </header>
 
@@ -62,34 +85,33 @@ button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
 
 <main id="app" class="hidden">
   <div class="bar">
-    <div class="card"><b>Approuver une demande par sa clé :</b><input id="requestId" placeholder="Clé de demande (ID)" style="width:320px">
-      <button class="trial" onclick="approveManual('approve15')">⏳ Essai 15 j</button><button class="trial" onclick="approveManual('approve30')">⏳ Essai 30 j</button><button class="approve" onclick="approveManual('approve')">✅ Permanent</button></div>
-    <div class="card"><b>Compte administrateur :</b><input id="newUser" placeholder="Identifiant" style="width:140px"><input id="newPass" type="password" placeholder="Nouveau mot de passe (8 min.)" style="width:220px"><button class="neutral" onclick="changePassword()">Enregistrer</button></div>
+    <div class="card"><b>Clé de demande :</b><input id="requestId" placeholder="Clé de demande (ID)" style="width:300px">
+      <button class="trial ic" onclick="approveManual('approve15')" title="Essai 15 jours">⏳<small>15</small></button><button class="trial ic" onclick="approveManual('approve30')" title="Essai 30 jours">⏳<small>30</small></button><button class="approve ic" onclick="approveManual('approve')" title="Licence permanente">✅</button></div>
+    <div class="card"><b>Compte admin :</b><input id="newUser" placeholder="Identifiant" style="width:130px"><input id="newPass" type="password" placeholder="Nouveau mot de passe (8 min.)" style="width:210px"><button class="neutral ic" onclick="changePassword()" title="Enregistrer le compte administrateur">💾</button></div>
   </div>
   <div class="bar">
-    <select id="statusFilter" onchange="render()"><option value="">Tous les états</option><option value="Pending">En attente</option><option value="Approved">Accordées</option><option value="Expired">Expirées</option><option value="Revoked">Révoquées</option><option value="Rejected">Refusées</option><option value="ReviewRequired">À vérifier</option></select>
+    <select id="statusFilter" onchange="render()"><option value="">Tous les états</option><option value="Pending">⏳ En attente</option><option value="Approved">Accordées</option><option value="Expired">Expirées</option><option value="Revoked">Révoquées</option><option value="Rejected">Refusées</option><option value="ReviewRequired">À vérifier</option></select>
     <select id="kindFilter" onchange="render()"><option value="">Tous les types</option><option>Permanent</option><option>Trial15</option><option>Trial30</option></select>
-    <label><input id="duplicates" type="checkbox" onchange="render()"> Doublons possibles</label>
-    <label><input id="archived" type="checkbox" onchange="load()"> Inclure les archives</label>
-    <button class="neutral" onclick="load()">Actualiser</button><span id="summary"></span>
+    <label><input id="duplicates" type="checkbox" onchange="render()"> Doublons</label>
+    <label><input id="archived" type="checkbox" onchange="load()"> Archives</label>
+    <button class="neutral ic" onclick="load()" title="Actualiser la liste">🔄</button><span id="summary"></span><span id="pendingCount" class="hidden"></span>
   </div>
   <div id="message" role="status"></div>
   <div class="table-wrap">
     <div class="table-tools">
-      <label>🔎 Abonné / téléphone <input id="search" placeholder="Nom de l'abonné ou téléphone" style="min-width:260px" oninput="render()"></label>
-      <label>📅 Demande du <input id="dateFrom" type="date" onchange="render()"></label>
-      <label>au <input id="dateTo" type="date" onchange="render()"></label>
-      <button onclick="clearFilters()">Effacer les filtres</button>
+      <label>🔎 <input id="search" placeholder="Abonné ou téléphone" style="min-width:200px" oninput="render()"></label>
+      <label>📅 <input id="dateFrom" type="date" onchange="render()" title="Demande du"> → <input id="dateTo" type="date" onchange="render()" title="au"></label>
+      <button class="ic info" onclick="clearFilters()" title="Effacer les filtres">🧹</button>
     </div>
-    <table><thead><tr><th>Abonné / téléphone</th><th>Machine / installation</th><th>Connexion</th><th>Dernière connexion en ligne</th><th>Licence accordée</th><th>Licence signalée par le poste</th><th>Actions administrateur</th></tr></thead><tbody id="rows"></tbody></table>
+    <table><thead><tr><th>Abonné / téléphone</th><th>Machine / installation</th><th>Connexion</th><th>Dernière connexion</th><th>Licence</th><th>Signalée par le poste</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
   </div>
-  <p><small>Hors ligne ne signifie pas sans licence. Un essai se compte à partir de la première demande du poste ; un renouvellement repart de la date du renouvellement. Une réapprobation identique ne renouvelle pas l'essai : utilisez Renouveler. Chaque décision exige une confirmation. Un doublon peut être une réinstallation ; vérifiez l'installation et sa dernière connexion avant d'archiver.</small></p>
+  <p><small>⏳ = essai (15/30 j) · ✅ = permanent · 🔁 = renouveler · ❌ = refuser · 🚫 = révoquer · 🗑 = archiver · ℹ️ = détails. Les demandes <b>En Attente</b> sont en tête de liste. Hors ligne ne signifie pas sans licence. Un essai se compte à partir de la première demande ; un renouvellement repart d'aujourd'hui. Chaque décision exige une confirmation.</small></p>
   <dialog id="confirmBox"><h2 id="confirmTitle">Confirmation</h2><pre id="confirmText"></pre>
     <div style="margin-top:16px"><button id="confirmOk" class="approve">✔ Confirmer</button><button id="confirmCancel">✖ Annuler</button></div>
   </dialog>
   <dialog id="details"><h2>Détails de la licence</h2><pre id="detailText"></pre>
     <label>Client / société<input id="editName" maxlength="200"></label><label>Téléphone<input id="editPhone" maxlength="80"></label>
-    <div style="margin-top:16px"><button class="neutral" onclick="saveContact()">Enregistrer les coordonnées</button><button onclick="copyId()">Copier l'ID de demande</button><button onclick="$('#details').close()">Fermer</button></div>
+    <div style="margin-top:12px"><button class="neutral" onclick="saveContact()" title="Enregistrer les coordonnées">💾 Enregistrer</button><button class="info" onclick="copyId()" title="Copier l'ID de demande">📋 ID</button><button class="info" onclick="$('#details').close()">✖ Fermer</button></div>
   </dialog>
 </main>
 
@@ -180,17 +202,31 @@ function render(){if($('#confirmBox').open)return;const query=$('#search').value
   const from=$('#dateFrom').value?new Date($('#dateFrom').value+'T00:00:00'):null,to=$('#dateTo').value?new Date($('#dateTo').value+'T23:59:59.999'):null;
   const visible=items.filter(x=>(!filter||status(x)===filter)&&(!kind||x.kind===kind)&&(!$('#duplicates').checked||x.duplicateCount>1)
     &&(!query||[x.customerName,x.phoneNumber,(x.phoneNumber||'').replace(/\D/g,'')].join(' ').toLocaleLowerCase().includes(query.replace(/\s+/g,' ')))
-    &&(!from||new Date(x.requestedAtUtc)>=from)&&(!to||new Date(x.requestedAtUtc)<=to));
-  $('#summary').textContent=`${visible.length} / ${items.length} installation(s)`;
-  $('#rows').innerHTML=visible.map(x=>{const online=x.lastSeenAtUtc&&Date.now()-new Date(x.lastSeenAtUtc).getTime()<45000,st=status(x);
+    &&(!from||new Date(x.requestedAtUtc)>=from)&&(!to||new Date(x.requestedAtUtc)<=to))
+    // Les demandes en attente d'une décision passent en tête, puis les plus récentes.
+    .sort((a,b)=>(status(b)==='Pending')-(status(a)==='Pending')||new Date(b.requestedAtUtc)-new Date(a.requestedAtUtc));
+  const pending=items.filter(x=>status(x)==='Pending'&&!x.archived).length;
+  $('#summary').textContent=`${visible.length} / ${items.length}`;
+  $('#pendingCount').textContent=pending?`⏳ ${pending} En Attente`:'';$('#pendingCount').classList.toggle('hidden',!pending);
+  document.title=(pending?`(${pending}) `:'')+'STOKY Pro - Licences (en ligne)';
+  const btn=(cls,title,icon,action)=>`<button class="${cls} ic" title="${esc(title)}" aria-label="${esc(title)}" onclick="${action}">${icon}</button>`;
+  $('#rows').innerHTML=visible.map(x=>{const online=x.lastSeenAtUtc&&Date.now()-new Date(x.lastSeenAtUtc).getTime()<45000,st=status(x),isPending=st==='Pending';
     const client=x.clientLicenseExpiresAtUtc&&new Date(x.clientLicenseExpiresAtUtc)<=new Date()?'Expired':x.clientLicenseStatus;
-    return `<tr class="${x.duplicateCount>1?'duplicate':''}"><td><b>${esc(x.customerName||'Sans nom')}</b><br>${esc(x.phoneNumber||'-')}<br><small>Demande : ${date(x.requestedAtUtc)}</small></td>
-    <td><code>${esc(x.machineCode)}</code><br><small>${esc(x.deviceName||'Poste non signalé')} · ${esc(x.installationId)}</small>${x.duplicateCount>1?`<br><span class="duplicate-note">Doublon possible : ${x.duplicateCount} installations</span>`:''}${x.archived?'<br><b>Archivée</b>':''}</td>
-    <td><span class="presence"><i class="led ${online?'online':''}"></i>${online?'En ligne':'Hors ligne'}</span></td>
-    <td class="seen">${date(x.lastSeenAtUtc)}<small>${ago(x.lastSeenAtUtc)}</small></td>
-    <td>${esc(kindLabel(x))}${x.trialStartedAtUtc?`<br><small>Essai compté depuis ${date(x.trialStartedAtUtc)}</small>`:''}<br><span class="badge b-${st}">${labels[st]||st}</span><br><small>Décision v${x.revision} · ${date(x.decidedAtUtc)}</small></td>
-    <td>${esc(labels[client]||client)}<br><small>${esc(kindNames[x.clientLicenseKind]||x.clientLicenseKind||'')} ${x.clientLicenseExpiresAtUtc?'· '+date(x.clientLicenseExpiresAtUtc):''}<br>Signalée : ${date(x.clientReportedAtUtc)}</small></td>
-    <td class="actions"><button onclick="details('${x.id}')">Détails / coordonnées</button>${x.archived?'':`<br><button class="trial" onclick="decide('${x.id}','approve15')">Essai 15 j</button><button class="trial" onclick="decide('${x.id}','approve30')">Essai 30 j</button><button class="approve" onclick="decide('${x.id}','approve')">Permanent</button>${x.status==='Approved'&&x.kind!=='Permanent'?`<button class="trial" onclick="decide('${x.id}','${x.kind==='Trial15'?'approve15':'approve30'}',true)">Renouveler</button>`:''}<br>${x.status==='Pending'?`<button class="reject" onclick="decide('${x.id}','reject')">Refuser</button>`:''}<button class="revoke" onclick="decide('${x.id}','revoke')">Révoquer</button><button class="delete" onclick="removeActivation('${x.id}')">Archiver</button>`}</td></tr>`}).join('');}
+    const actions=btn('info','Détails et coordonnées','ℹ️',`details('${x.id}')`)+(x.archived?'':
+      btn('trial',isPending?'Accepter : essai 15 jours':'Essai 15 jours','⏳<small>15</small>',`decide('${x.id}','approve15')`)
+      +btn('trial',isPending?'Accepter : essai 30 jours':'Essai 30 jours','⏳<small>30</small>',`decide('${x.id}','approve30')`)
+      +btn('approve',isPending?'Accepter : licence permanente':'Licence permanente','✅',`decide('${x.id}','approve')`)
+      +(x.status==='Approved'&&x.kind!=='Permanent'?btn('trial','Renouveler l\'essai','🔁',`decide('${x.id}','${x.kind==='Trial15'?'approve15':'approve30'}',true)`):'')
+      +(isPending?btn('reject','Refuser la demande','❌',`decide('${x.id}','reject')`):'')
+      +btn('revoke','Révoquer la licence','🚫',`decide('${x.id}','revoke')`)
+      +btn('delete','Archiver / supprimer cette installation','🗑',`removeActivation('${x.id}')`));
+    return `<tr class="${x.duplicateCount>1?'duplicate ':''}${isPending?'pending':''}"><td data-label="Abonné"><b>${esc(x.customerName||'Sans nom')}</b><br>${esc(x.phoneNumber||'-')}<br><small>Demande : ${date(x.requestedAtUtc)}</small></td>
+    <td data-label="Machine"><code>${esc(x.machineCode)}</code><br><small>${esc(x.deviceName||'Poste non signalé')} · ${esc(x.installationId)}</small>${x.duplicateCount>1?`<br><span class="duplicate-note">Doublon possible : ${x.duplicateCount} installations</span>`:''}${x.archived?'<br><b>Archivée</b>':''}</td>
+    <td data-label="Connexion"><span class="presence"><i class="led ${online?'online':''}"></i>${online?'En ligne':'Hors ligne'}</span></td>
+    <td data-label="Vu" class="seen">${date(x.lastSeenAtUtc)}<small>${ago(x.lastSeenAtUtc)}</small></td>
+    <td data-label="Licence">${isPending?'<span class="badge b-Pending">⏳ En Attente</span><br><small>Demande à accepter, refuser ou archiver</small>':`${esc(kindLabel(x))}${x.trialStartedAtUtc?`<br><small>Essai compté depuis ${date(x.trialStartedAtUtc)}</small>`:''}<br><span class="badge b-${st}">${labels[st]||st}</span><br><small>Décision v${x.revision} · ${date(x.decidedAtUtc)}</small>`}</td>
+    <td data-label="Poste">${esc(labels[client]||client)}<br><small>${esc(kindNames[x.clientLicenseKind]||x.clientLicenseKind||'')} ${x.clientLicenseExpiresAtUtc?'· '+date(x.clientLicenseExpiresAtUtc):''}<br>Signalée : ${date(x.clientReportedAtUtc)}</small></td>
+    <td data-label="Actions" class="actions">${actions}</td></tr>`}).join('');}
 async function decide(id,decision,renew=false){if(busy)return;const x=items.find(x=>x.id===id),days=decision==='approve15'?15:decision==='approve30'?30:0,kind=days?`Essai ${days} jours`:'Permanente';
   const who=`${x?.customerName||'Abonné sans nom'} · ${x?.phoneNumber||'-'}\nMachine : ${x?.machineCode||id}`;let title,text,ok,danger=false;
   if(decision==='revoke'){title='Révoquer la licence';text=`${who}\n\nSon accès sera retiré à sa prochaine connexion.`;ok='Révoquer';danger=true}
@@ -213,4 +249,3 @@ async function changePassword(){const username=$('#newUser').value.trim(),passwo
 </script>
 </body>
 </html>
-

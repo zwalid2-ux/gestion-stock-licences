@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>STOKY Pro - Licences (en ligne)</title>
+<style>
+body{font:15px Segoe UI,sans-serif;margin:0;background:#f4f6fa;color:#172033}
+header{background:#202a36;color:white;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+header button{background:#475569;color:white}
+header a{color:#93c5fd}
+main{padding:22px 24px;max-width:1800px;margin:auto}
+button{padding:7px 12px;border:0;border-radius:5px;cursor:pointer;margin-right:5px;font-size:13px}
+.actions{min-width:210px}.actions button{margin-bottom:5px}input,select{padding:8px;border:1px solid #aab4c3;border-radius:5px}
+.bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.card{padding:12px 14px;background:white;border:1px solid #dbe1ea;border-radius:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.trial{background:#d97706;color:white}.approve{background:#15803d;color:white}.reject,.revoke,.delete{background:#b91c1c;color:white}.neutral{background:#1d4ed8;color:white}
+table{width:100%;border-collapse:collapse;background:white}th,td{text-align:left;padding:10px;border-bottom:1px solid #dbe1ea;vertical-align:middle}th{background:#e8edf5;font-size:13px}
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600}
+.b-Pending{background:#fef3c7;color:#92400e}.b-Approved{background:#dcfce7;color:#166534}.b-Expired{background:#e5e7eb;color:#374151}.b-Rejected,.b-Revoked{background:#fee2e2;color:#991b1b}.b-ReviewRequired{background:#fee2e2;color:#991b1b}
+.presence{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.led{width:11px;height:11px;border-radius:50%;display:inline-block;background:#dc2626}.led.online{background:#16a34a;box-shadow:0 0 0 3px #dcfce7}
+code{font-size:12px;overflow-wrap:anywhere}#message{margin:10px 0;color:#166534;min-height:18px}small{color:#5b6472}
+.table-wrap{overflow:auto;border-radius:8px;background:white;border:1px solid #dbe1ea}.duplicate{background:#fff7ed}.duplicate-note{color:#9a3412;font-size:12px;font-weight:600}
+.table-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:10px 12px;background:#f8fafc;border-bottom:1px solid #dbe1ea}.table-tools label{display:inline-flex;gap:6px;align-items:center;font-size:13px;font-weight:600}
+.seen{white-space:nowrap}.seen small{display:block}.warn{color:#b45309;font-weight:600}
+dialog{width:min(700px,90vw);border:1px solid #dbe1ea;border-radius:12px;padding:22px}dialog::backdrop{background:#17203366}
+dialog label{display:block;margin-top:10px}dialog input{width:95%}dialog pre{white-space:pre-wrap;font:13px Segoe UI;line-height:1.7}
+button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
+#login{display:flex;justify-content:center;align-items:center;min-height:70vh}
+#login form{background:white;padding:32px 36px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08);width:360px}
+#login h1{font-size:20px;margin:0 0 6px}#login p.sub{margin:0 0 18px;color:#5b6472;font-size:13px}
+#login label{display:block;font-weight:600;margin:12px 0 4px;font-size:13px}#login input{width:100%;box-sizing:border-box}
+#login button{margin-top:18px;width:100%;padding:10px;background:#1d4ed8;color:white;font-weight:600}
+#login .error{background:#fee2e2;color:#991b1b;padding:8px 10px;border-radius:6px;font-size:13px;margin-top:12px}
+#serverState{font-size:12px;color:#cbd5e1}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div><b>STOKY Pro</b> — abonnés et licences (page en ligne)<br>
+    <small id="serverState">🌐 Serveur : recherche de l'adresse courante…</small></div>
+  <div id="headerActions" class="hidden">
+    <button type="button" onclick="refreshServer(true)">Actualiser l'adresse du serveur</button>
+    <button type="button" onclick="logout()">Déconnexion</button>
+  </div>
+</header>
+
+<section id="login">
+  <form onsubmit="return login(event)" autocomplete="off">
+    <h1>🔑 Serveur de licences STOKY Pro</h1><p class="sub">Connexion administrateur</p>
+    <label for="username">Identifiant</label><input id="username" required autofocus>
+    <label for="password">Mot de passe</label><input id="password" type="password" required>
+    <div id="loginError" class="error hidden"></div>
+    <button type="submit" id="loginButton">Se connecter</button>
+    <p><small>Cette page est hébergée sur GitHub et dialogue directement avec le serveur de licences via son adresse courante.
+      Si le serveur est injoignable, vérifiez qu'il est démarré, puis saisissez son adresse ci-dessous.</small></p>
+    <label for="manualServer">Adresse du serveur (optionnel)</label><input id="manualServer" placeholder="https://….trycloudflare.com">
+  </form>
+</section>
+
+<main id="app" class="hidden">
+  <div class="bar">
+    <div class="card"><b>Approuver une demande par sa clé :</b><input id="requestId" placeholder="Clé de demande (ID)" style="width:320px">
+      <button class="trial" onclick="approveManual('approve15')">⏳ Essai 15 j</button><button class="trial" onclick="approveManual('approve30')">⏳ Essai 30 j</button><button class="approve" onclick="approveManual('approve')">✅ Permanent</button></div>
+    <div class="card"><b>Compte administrateur :</b><input id="newUser" placeholder="Identifiant" style="width:140px"><input id="newPass" type="password" placeholder="Nouveau mot de passe (8 min.)" style="width:220px"><button class="neutral" onclick="changePassword()">Enregistrer</button></div>
+  </div>
+  <div class="bar">
+    <select id="statusFilter" onchange="render()"><option value="">Tous les états</option><option value="Pending">En attente</option><option value="Approved">Accordées</option><option value="Expired">Expirées</option><option value="Revoked">Révoquées</option><option value="Rejected">Refusées</option><option value="ReviewRequired">À vérifier</option></select>
+    <select id="kindFilter" onchange="render()"><option value="">Tous les types</option><option>Permanent</option><option>Trial15</option><option>Trial30</option></select>
+    <label><input id="duplicates" type="checkbox" onchange="render()"> Doublons possibles</label>
+    <label><input id="archived" type="checkbox" onchange="load()"> Inclure les archives</label>
+    <button class="neutral" onclick="load()">Actualiser</button><span id="summary"></span>
+  </div>
+  <div id="message" role="status"></div>
+  <div class="table-wrap">
+    <div class="table-tools">
+      <label>🔎 Abonné / téléphone <input id="search" placeholder="Nom de l'abonné ou téléphone" style="min-width:260px" oninput="render()"></label>
+      <label>📅 Demande du <input id="dateFrom" type="date" onchange="render()"></label>
+      <label>au <input id="dateTo" type="date" onchange="render()"></label>
+      <button onclick="clearFilters()">Effacer les filtres</button>
+    </div>
+    <table><thead><tr><th>Abonné / téléphone</th><th>Machine / installation</th><th>Connexion</th><th>Dernière connexion en ligne</th><th>Licence accordée</th><th>Licence signalée par le poste</th><th>Actions administrateur</th></tr></thead><tbody id="rows"></tbody></table>
+  </div>
+  <p><small>Hors ligne ne signifie pas sans licence. Un essai se compte à partir de la première demande du poste ; un renouvellement repart de la date du renouvellement. Une réapprobation identique ne renouvelle pas l'essai : utilisez Renouveler. Chaque décision exige une confirmation. Un doublon peut être une réinstallation ; vérifiez l'installation et sa dernière connexion avant d'archiver.</small></p>
+  <dialog id="confirmBox"><h2 id="confirmTitle">Confirmation</h2><pre id="confirmText"></pre>
+    <div style="margin-top:16px"><button id="confirmOk" class="approve">✔ Confirmer</button><button id="confirmCancel">✖ Annuler</button></div>
+  </dialog>
+  <dialog id="details"><h2>Détails de la licence</h2><pre id="detailText"></pre>
+    <label>Client / société<input id="editName" maxlength="200"></label><label>Téléphone<input id="editPhone" maxlength="80"></label>
+    <div style="margin-top:16px"><button class="neutral" onclick="saveContact()">Enregistrer les coordonnées</button><button onclick="copyId()">Copier l'ID de demande</button><button onclick="$('#details').close()">Fermer</button></div>
+  </dialog>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+const REPO='zwalid2-ux/gestion-stock-licences';
+const TOKEN_KEY='stoky.admin.session', SERVER_KEY='stoky.admin.server';
+let items=[],selectedId=null,busy=false,server=null,pollTimer=null;
+const labels={Pending:'En attente',Approved:'Accordée',Expired:'Expirée',Revoked:'Révoquée',Rejected:'Refusée',ReviewRequired:'À vérifier',Active:'Active confirmée',ExternalLicensed:'Licence externe signée',Unknown:'Pas encore signalée',Missing:'Licence non reçue',Invalid:'Signature / appareil invalide',OutOfDate:'Ancienne version à synchroniser'};
+const kindNames={Permanent:'Permanente',Trial15:'Essai 15 jours',Trial30:'Essai 30 jours',Trial:'Licence temporaire'};
+const date=v=>{if(!v)return '-';const d=new Date(v);if(isNaN(d))return '-';const p=n=>String(n).padStart(2,'0');return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`};
+function ago(v){if(!v)return 'jamais';const s=Math.max(0,Math.round((Date.now()-new Date(v).getTime())/1000));if(s<60)return `il y a ${s} s`;const m=Math.round(s/60);if(m<60)return `il y a ${m} min`;const h=Math.round(m/60);if(h<48)return `il y a ${h} h`;return `il y a ${Math.round(h/24)} j`}
+function esc(v){const d=document.createElement('div');d.textContent=v==null?'':String(v);return d.innerHTML}
+function message(text,error=false){$('#message').textContent=text;$('#message').classList.toggle('error',error)}
+function token(){return sessionStorage.getItem(TOKEN_KEY)||''}
+
+// ---- Adresse courante du serveur (tunnel) : server.json publié par le serveur, puis dépôt GitHub ----
+function normalize(url){return (url||'').trim().replace(/\/+$/,'').replace(/\/admin$/,'')}
+async function reachable(url){try{const r=await fetch(`${url}/health`,{cache:'no-store'});return r.ok}catch{return false}}
+async function discoverServer(force){
+  const manual=normalize($('#manualServer').value);
+  if(manual)return manual;
+  const stamp=Date.now();
+  const sources=[
+    async()=>{const r=await fetch(`./server.json?t=${stamp}`,{cache:'no-store'});if(!r.ok)throw 0;return normalize((await r.json()).url)},
+    async()=>{const r=await fetch(`https://raw.githubusercontent.com/${REPO}/main/activation-server.txt?t=${stamp}`,{cache:'no-store'});if(!r.ok)throw 0;return normalize((await r.text()).split('\n')[0])},
+    async()=>{const r=await fetch(`https://api.github.com/repos/${REPO}/contents/activation-server.txt?ref=main&t=${stamp}`,{headers:{Accept:'application/vnd.github.raw+json'}});if(!r.ok)throw 0;return normalize((await r.text()).split('\n')[0])},
+  ];
+  if(!force){const cached=normalize(localStorage.getItem(SERVER_KEY));if(cached&&await reachable(cached))return cached}
+  for(const source of sources){try{const url=await source();if(url&&/^https?:\/\//.test(url)&&await reachable(url))return url}catch{}}
+  return null;
+}
+async function refreshServer(force=false){
+  $('#serverState').textContent='🌐 Serveur : recherche de l\'adresse courante…';
+  const found=await discoverServer(force);
+  if(!found){$('#serverState').innerHTML='🌐 <span class="warn">Serveur injoignable</span> : il est peut-être arrêté, ou son adresse change (tunnel en redémarrage). Réessayez dans une minute.';return null}
+  if(found!==server){server=found;localStorage.setItem(SERVER_KEY,found)}
+  $('#serverState').innerHTML=`🌐 Serveur : <a href="${esc(server)}/admin" target="_blank" rel="noopener">${esc(server)}</a> · adresse stable de cette page : <b>${esc(location.host+location.pathname)}</b>`;
+  return server;
+}
+
+// ---- Session : jeton signé par le serveur, envoyé dans un en-tête (les cookies ne traversent pas les sites) ----
+async function api(path,options={}){
+  if(!server&&!(await refreshServer()))throw Error('Serveur injoignable');
+  const headers={...(options.headers||{}),'X-Admin-Session':token()};
+  let r;
+  try{r=await fetch(server+path,{...options,headers})}
+  catch{if(!(await refreshServer(true)))throw Error('Serveur injoignable');r=await fetch(server+path,{...options,headers})}
+  if(r.status===401){showLogin('Session expirée : reconnectez-vous.');throw Error('Session expirée')}
+  if(!r.ok){const text=await r.text();let detail;try{detail=JSON.parse(text)}catch{detail=null}throw Error(detail?.error||detail?.title||'Erreur HTTP '+r.status)}
+  return r;
+}
+async function login(event){
+  event.preventDefault();
+  const button=$('#loginButton');button.disabled=true;$('#loginError').classList.add('hidden');
+  try{
+    if(!(await refreshServer(true)))throw Error('Serveur de licences injoignable.');
+    const r=await fetch(server+'/api/admin/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#username').value,password:$('#password').value})});
+    if(r.status===401)throw Error('Identifiant ou mot de passe incorrect.');
+    if(!r.ok)throw Error('Connexion refusée (HTTP '+r.status+').');
+    const session=await r.json();sessionStorage.setItem(TOKEN_KEY,session.token);$('#password').value='';
+    showApp();
+  }catch(e){$('#loginError').textContent=e.message;$('#loginError').classList.remove('hidden')}
+  finally{button.disabled=false}
+  return false;
+}
+function logout(){sessionStorage.removeItem(TOKEN_KEY);showLogin()}
+function showLogin(error){
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  $('#app').classList.add('hidden');$('#headerActions').classList.add('hidden');$('#login').classList.remove('hidden');
+  if(error){$('#loginError').textContent=error;$('#loginError').classList.remove('hidden')}
+  $('#username').focus();
+}
+function showApp(){
+  $('#login').classList.add('hidden');$('#app').classList.remove('hidden');$('#headerActions').classList.remove('hidden');
+  load();if(!pollTimer)pollTimer=setInterval(load,3000);
+}
+setInterval(()=>{if(token())refreshServer(false)},60000);
+
+// ---- Tableau de bord (mêmes fonctions que le tableau local du serveur) ----
+function ask(title,text,okLabel='Confirmer',danger=false){return new Promise(resolve=>{const box=$('#confirmBox'),ok=$('#confirmOk'),cancel=$('#confirmCancel');$('#confirmTitle').textContent=title;$('#confirmText').textContent=text;ok.textContent='✔ '+okLabel;ok.className=danger?'revoke':'approve';
+  const done=value=>{ok.onclick=cancel.onclick=null;box.onclose=null;if(box.open)box.close();resolve(value)};ok.onclick=()=>done(true);cancel.onclick=()=>done(false);box.onclose=()=>done(false);box.showModal();cancel.focus()})}
+function clearFilters(){$('#search').value='';$('#dateFrom').value='';$('#dateTo').value='';$('#statusFilter').value='';$('#kindFilter').value='';$('#duplicates').checked=false;render()}
+function status(x){return x.status==='Approved'&&x.effectiveExpiry&&new Date(x.effectiveExpiry)<=new Date()?'Expired':x.effectiveStatus}
+function kindLabel(x){if(x.status!=='Approved'&&x.status!=='Revoked')return '-';return (kindNames[x.kind]||'À vérifier')+(x.effectiveExpiry?' — échéance '+date(x.effectiveExpiry):'')}
+async function load(){if(!token())return;try{const r=await api('/api/admin/activations?includeArchived='+$('#archived').checked);items=await r.json();render()}catch(e){if(e.message!=='Session expirée')message(e.message,true)}}
+function render(){if($('#confirmBox').open)return;const query=$('#search').value.trim().toLocaleLowerCase(),filter=$('#statusFilter').value,kind=$('#kindFilter').value;
+  const from=$('#dateFrom').value?new Date($('#dateFrom').value+'T00:00:00'):null,to=$('#dateTo').value?new Date($('#dateTo').value+'T23:59:59.999'):null;
+  const visible=items.filter(x=>(!filter||status(x)===filter)&&(!kind||x.kind===kind)&&(!$('#duplicates').checked||x.duplicateCount>1)
+    &&(!query||[x.customerName,x.phoneNumber,(x.phoneNumber||'').replace(/\D/g,'')].join(' ').toLocaleLowerCase().includes(query.replace(/\s+/g,' ')))
+    &&(!from||new Date(x.requestedAtUtc)>=from)&&(!to||new Date(x.requestedAtUtc)<=to));
+  $('#summary').textContent=`${visible.length} / ${items.length} installation(s)`;
+  $('#rows').innerHTML=visible.map(x=>{const online=x.lastSeenAtUtc&&Date.now()-new Date(x.lastSeenAtUtc).getTime()<45000,st=status(x);
+    const client=x.clientLicenseExpiresAtUtc&&new Date(x.clientLicenseExpiresAtUtc)<=new Date()?'Expired':x.clientLicenseStatus;
+    return `<tr class="${x.duplicateCount>1?'duplicate':''}"><td><b>${esc(x.customerName||'Sans nom')}</b><br>${esc(x.phoneNumber||'-')}<br><small>Demande : ${date(x.requestedAtUtc)}</small></td>
+    <td><code>${esc(x.machineCode)}</code><br><small>${esc(x.deviceName||'Poste non signalé')} · ${esc(x.installationId)}</small>${x.duplicateCount>1?`<br><span class="duplicate-note">Doublon possible : ${x.duplicateCount} installations</span>`:''}${x.archived?'<br><b>Archivée</b>':''}</td>
+    <td><span class="presence"><i class="led ${online?'online':''}"></i>${online?'En ligne':'Hors ligne'}</span></td>
+    <td class="seen">${date(x.lastSeenAtUtc)}<small>${ago(x.lastSeenAtUtc)}</small></td>
+    <td>${esc(kindLabel(x))}${x.trialStartedAtUtc?`<br><small>Essai compté depuis ${date(x.trialStartedAtUtc)}</small>`:''}<br><span class="badge b-${st}">${labels[st]||st}</span><br><small>Décision v${x.revision} · ${date(x.decidedAtUtc)}</small></td>
+    <td>${esc(labels[client]||client)}<br><small>${esc(kindNames[x.clientLicenseKind]||x.clientLicenseKind||'')} ${x.clientLicenseExpiresAtUtc?'· '+date(x.clientLicenseExpiresAtUtc):''}<br>Signalée : ${date(x.clientReportedAtUtc)}</small></td>
+    <td class="actions"><button onclick="details('${x.id}')">Détails / coordonnées</button>${x.archived?'':`<br><button class="trial" onclick="decide('${x.id}','approve15')">Essai 15 j</button><button class="trial" onclick="decide('${x.id}','approve30')">Essai 30 j</button><button class="approve" onclick="decide('${x.id}','approve')">Permanent</button>${x.status==='Approved'&&x.kind!=='Permanent'?`<button class="trial" onclick="decide('${x.id}','${x.kind==='Trial15'?'approve15':'approve30'}',true)">Renouveler</button>`:''}<br>${x.status==='Pending'?`<button class="reject" onclick="decide('${x.id}','reject')">Refuser</button>`:''}<button class="revoke" onclick="decide('${x.id}','revoke')">Révoquer</button><button class="delete" onclick="removeActivation('${x.id}')">Archiver</button>`}</td></tr>`}).join('');}
+async function decide(id,decision,renew=false){if(busy)return;const x=items.find(x=>x.id===id),days=decision==='approve15'?15:decision==='approve30'?30:0,kind=days?`Essai ${days} jours`:'Permanente';
+  const who=`${x?.customerName||'Abonné sans nom'} · ${x?.phoneNumber||'-'}\nMachine : ${x?.machineCode||id}`;let title,text,ok,danger=false;
+  if(decision==='revoke'){title='Révoquer la licence';text=`${who}\n\nSon accès sera retiré à sa prochaine connexion.`;ok='Révoquer';danger=true}
+  else if(decision==='reject'){title='Refuser la demande';text=`${who}\n\nLe poste restera sans licence.`;ok='Refuser';danger=true}
+  else{title=`${renew?'Renouveler':'Accorder'} : ${kind}`;const start=renew||!x?new Date():new Date(x.requestedAtUtc);const end=days?new Date(start.getTime()+days*86400000):null;
+    text=who+(days?`\n\nDébut de l'essai : ${date(start)} (${renew?'date du renouvellement':'première demande du poste'})\nÉchéance : ${date(end)}`:'\n\nAccès permanent, sans échéance.')
+      +(end&&end<=new Date()?'\n\n⚠ Cette échéance est déjà dépassée : préférez Renouveler ou un essai plus long.':'')+(x&&x.status!=='Pending'?'\n\nLa décision existante sera remplacée uniquement après cette confirmation.':'');ok=renew?'Renouveler':'Accorder'}
+  if(!await ask(title,text,ok,danger))return;busy=true;try{await api(`/api/admin/activations/${id}/${decision}?replace=${x?.status!=='Pending'}&renew=${renew}`,{method:'POST'});message('Décision enregistrée. Le poste connecté reçoit automatiquement la licence.');await load()}catch(e){message(e.message,true)}finally{busy=false}}
+async function approveManual(decision){const id=$('#requestId').value.trim();if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)){message('Clé de demande invalide',true);return}await decide(id,decision)}
+async function removeActivation(id){if(busy)return;const x=items.find(x=>x.id===id);if(!await ask('Archiver cette installation',`${x?.customerName||'Abonné sans nom'} · ${x?.phoneNumber||'-'}\nMachine : ${x?.machineCode||id}\nDernière connexion : ${date(x?.lastSeenAtUtc)}\n\nSa licence sera révoquée ; les autres installations sont conservées. Une trace est gardée pour bloquer ses anciens codes.`,'Archiver',true))return;busy=true;try{await api(`/api/admin/activations/${id}`,{method:'DELETE'});message('Installation archivée ; les autres licences sont conservées.');await load()}catch(e){message(e.message,true)}finally{busy=false}}
+function details(id){selectedId=id;const x=items.find(x=>x.id===id);if(!x)return;$('#editName').value=x.customerName||'';$('#editPhone').value=x.phoneNumber||'';
+  $('#detailText').textContent=`ID de demande : ${x.id}\nMachine : ${x.machineCode}\nInstallation : ${x.installationId}\nPoste : ${x.deviceName||'-'}\nVersion STOKY : ${x.appVersion||'-'}\nLicence : ${kindLabel(x)}${x.trialStartedAtUtc?`\nEssai compté depuis : ${date(x.trialStartedAtUtc)}`:''}\nÉtat : ${labels[status(x)]||status(x)} — version ${x.revision}\nPremière demande : ${date(x.requestedAtUtc)}\nDécidée : ${date(x.decidedAtUtc)}\nJeton téléchargé : ${date(x.lastCheckedAtUtc)}\nLicence signalée par le poste : ${labels[x.clientLicenseStatus]||x.clientLicenseStatus}\nDernier signalement : ${date(x.clientReportedAtUtc)}\nDernière connexion en ligne : ${date(x.lastSeenAtUtc)} (${ago(x.lastSeenAtUtc)})\n\nHistorique :\n`+(x.history||[]).map(h=>`${date(h.atUtc)} · ${h.actor} · ${h.action} · ${kindNames[h.kind]||h.kind} · ${date(h.expiresAtUtc)}`).join('\n');
+  $('#details').showModal();}
+async function saveContact(){try{await api(`/api/admin/activations/${selectedId}/contact`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerName:$('#editName').value,phoneNumber:$('#editPhone').value})});$('#details').close();message('Coordonnées enregistrées, conditions de licence inchangées.');await load()}catch(e){message(e.message,true)}}
+async function copyId(){try{await navigator.clipboard.writeText(selectedId);message('ID copié.')}catch(e){message('Copie impossible : '+e.message,true)}}
+async function changePassword(){const username=$('#newUser').value.trim(),password=$('#newPass').value;if(!username||password.length<8){message('Identifiant requis et mot de passe de 8 caractères minimum',true);return}
+  try{await api('/api/admin/password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password})});message('Compte administrateur mis à jour');$('#newPass').value=''}catch(e){message(e.message,true)}}
+
+(async()=>{await refreshServer(false);if(token())showApp();else showLogin()})();
+</script>
+</body>
+</html>
+

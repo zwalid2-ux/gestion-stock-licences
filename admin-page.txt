@@ -1,5 +1,1 @@
-https://appeals-revelation-divorce-nor.trycloudflare.com/admin
-
-Tableau de bord des licences STOKY Pro (connexion administrateur requise).
-Page stable : https://zwalid2-ux.github.io/gestion-stock-licences/gestion-licence.html
-Mis à jour : 20/10/2026 19:00
+https://zwalid2-ux.github.io/gestion-stock-licences/gestion-licence.html

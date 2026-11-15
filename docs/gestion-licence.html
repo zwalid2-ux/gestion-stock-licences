@@ -32,6 +32,8 @@ dialog{width:min(640px,94vw);border:1px solid #dbe1ea;border-radius:12px;padding
 dialog label{display:block;margin-top:10px}dialog input,dialog textarea{width:100%}dialog textarea{min-height:100px}dialog pre{white-space:pre-wrap;font:13px Segoe UI;line-height:1.6;overflow-wrap:anywhere}
 dialog h2{font-size:17px;margin:0 0 8px}dialog button{margin:6px 6px 0 0}
 button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
+.dialog-message{margin-top:10px;min-height:18px;font-size:13px;font-weight:600;color:#166534}
+dialog fieldset{margin-top:12px;border:1px solid #d9dee7;border-radius:8px;padding:8px 12px}
 #login{display:flex;justify-content:center;align-items:center;min-height:70vh;padding:12px}
 #login form{background:white;padding:24px 22px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08);width:100%;max-width:430px}
 #login h1{font-size:19px;margin:0 0 6px}#login p.sub{margin:0 0 14px;color:#5b6472;font-size:13px}
@@ -68,7 +70,7 @@ button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
   <form onsubmit="return login(event)" autocomplete="off">
     <h1>🔑 Accès développeur aux licences</h1>
     <p class="sub">La page fonctionne même lorsque le poste serveur est éteint. Une clé de licence d'abonné n'ouvre pas l'administration : seul un compte GitHub autorisé sur le dépôt et la clé privée de signature d'origine y donnent accès.</p>
-    <p class="sub">Connectez-vous avec votre identifiant et mot de passe <strong>sur GitHub uniquement</strong>, puis <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">créez un jeton limité au dépôt des licences</a> (Contents : lecture/écriture). Ne saisissez jamais votre mot de passe GitHub sur cette page.</p>
+    <p class="sub">Connectez-vous avec votre identifiant et mot de passe <strong>sur GitHub uniquement</strong>, puis <a href="https://github.com/settings/personal-access-tokens/new?name=STOKY+licences&amp;contents=write" target="_blank" rel="noopener noreferrer">créez un jeton à accès fin</a> : <strong>Repository access → Only select repositories → gestion-stock-licences</strong>, puis <strong>Repository permissions → Contents → Read and write</strong>. Un jeton en lecture seule affiche la liste mais ne peut rien enregistrer (erreur 403). Ne saisissez jamais votre mot de passe GitHub sur cette page.</p>
     <label for="githubToken">Jeton GitHub du développeur (non mémorisé)</label><input id="githubToken" type="password" required autocomplete="off">
     <label for="signingKey">Clé privée de signature (.pk8, reste sur cet appareil)</label>
     <input id="signingKey" type="file" accept=".pk8" required>
@@ -112,14 +114,20 @@ button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
     <label>Client / société (facultatif, chiffré)<input id="requestName" maxlength="200"></label>
     <label>Téléphone (facultatif, chiffré)<input id="requestPhone" maxlength="80"></label>
     <button class="neutral" onclick="addRequest()">➕ Enregistrer</button><button class="info" onclick="$('#requestBox').close()">✖ Annuler</button>
+    <div class="dialog-message" role="status"></div>
   </dialog>
   <dialog id="details"><h2>Détails de la licence</h2><pre id="detailText"></pre>
     <label>Client / société<input id="editName" maxlength="200"></label><label>Téléphone<input id="editPhone" maxlength="80"></label>
-    <fieldset id="featuresBox" style="margin-top:12px;border:1px solid #d9dee7;border-radius:8px;padding:8px 12px"><legend id="featuresLegend">Options accordées</legend>
+    <fieldset id="kindBox"><legend>Type de licence</legend>
+      <button class="trial" onclick="changeKind('approve15')" title="Essai de 15 jours">⏳ Essai 15 j</button><button class="trial" onclick="changeKind('approve30')" title="Essai de 30 jours">⏳ Essai 30 j</button><button class="approve" onclick="changeKind('approve')" title="Licence permanente sans échéance">✅ Permanente</button><button class="revoke" onclick="changeKind('revoke')" title="Révoquer la licence">🚫 Révoquer</button>
+      <br><small>Une confirmation affiche l'échéance avant tout changement. Pour une installation déjà décidée, un essai repart d'aujourd'hui.</small>
+    </fieldset>
+    <fieldset id="featuresBox"><legend id="featuresLegend">Options accordées</legend>
       <div id="featureList" style="display:grid;grid-template-columns:1fr 1fr;gap:2px 14px"></div>
       <small>Les changements d'options sont signés et reçus à la prochaine connexion du poste.</small>
     </fieldset>
     <div style="margin-top:12px"><button class="neutral" onclick="saveContact()" title="Enregistrer les coordonnées">💾 Enregistrer</button><button class="approve" onclick="saveFeatures()" title="Enregistrer les options accordées">⚙️ Options</button><button class="info" onclick="copyId()" title="Copier l'ID de demande">📋 ID</button><button class="info" onclick="$('#details').close()">✖ Fermer</button></div>
+        <div class="dialog-message" role="status"></div>
   </dialog>
 </main>
 <script src="gestion-licence.js" defer></script>

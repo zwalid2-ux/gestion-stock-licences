@@ -64,9 +64,19 @@ const featuresSummary = record => {
     features.length ? `${features.length}/${FEATURES.length} options` : 'aucune option';
 };
 const normalizeMachine = value => (value || '').replace(/[-\s]/g, '').toUpperCase();
+const TOKEN_HELP = "Ce jeton GitHub peut lire le dépôt des licences mais n'a pas le droit d'y écrire. " +
+  'Créez un jeton à accès fin : « Repository access » → « Only select repositories » → gestion-stock-licences, ' +
+  'puis « Repository permissions » → « Contents » → « Read and write ». ' +
+  'Un jeton classique doit avoir la portée « public_repo ».';
 function message(text, error = false) {
-  $('#message').textContent = text;
-  $('#message').classList.toggle('error', error);
+  for (const element of document.querySelectorAll('#message, dialog[open] .dialog-message')) {
+    element.textContent = text;
+    element.classList.toggle('error', error);
+  }
+}
+function setBusy(value) {
+  busy = value;
+  for (const button of document.querySelectorAll('#details button, #requestBox button')) button.disabled = value;
 }
 function clearCredentials() {
   githubToken = '';
@@ -90,7 +100,11 @@ async function github(method, path, body) {
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => null);
-    const error = new Error(`GitHub (${response.status}) : ${detail?.message || response.statusText}`);
+    const text = detail?.message || response.statusText;
+    const error = new Error(
+      response.status === 403 && /not accessible by|must have (admin|push)|write access/i.test(text) ? TOKEN_HELP
+        : response.status === 401 ? 'Jeton GitHub refusé ou expiré : créez-en un nouveau.'
+          : `GitHub (${response.status}) : ${text}`);
     error.status = response.status;
     throw error;
   }
@@ -173,7 +187,10 @@ async function login(event) {
       { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
     const repo = await github('GET', '');
     if (!repo.permissions?.push)
-      throw Error("Ce jeton GitHub n'a pas le droit d'écrire dans le dépôt des licences.");
+      throw Error("Ce compte GitHub n'a pas le droit d'écrire dans le dépôt des licences.");
+    // Le droit du compte ne dit rien du jeton : un objet Git non référencé vérifie son droit d'écriture réel.
+    await github('POST', '/git/blobs',
+      { content: base64(encoder.encode('STOKY write check')), encoding: 'base64' });
     const snapshot = await readSnapshot();
     items = snapshot.records;
     headSha = snapshot.head;
@@ -287,26 +304,41 @@ async function commitSnapshot(records, published) {
   const updated = await github('PATCH', `/git/refs/heads/${BRANCH}`, { sha: commit.sha, force: false });
   headSha = updated.object.sha;
 }
-async function change(mutator, success) {
-  if (!ready || busy) return false;
-  busy = true;
-  let conflict = false;
+async function change(mutator, success, id = null) {
+  if (busy) return false;
+  if (!ready) {
+    message('Base GitHub non chargée : fermez cette fenêtre, actualisez la liste (🔄) puis recommencez.', true);
+    return false;
+  }
+  setBusy(true);
+  render();
+  message('Enregistrement sur GitHub…');
   try {
-    const next = structuredClone(items);
-    const published = await mutator(next);
-    await commitSnapshot(next, published);
-    items = next;
-    message(success);
-    return true;
+    for (let attempt = 0; ; attempt++) {
+      const next = structuredClone(items);
+      const published = await mutator(next);
+      try {
+        await commitSnapshot(next, published);
+        items = next;
+        message(success);
+        return true;
+      } catch (error) {
+        if ((error.status !== 409 && error.status !== 422) || attempt >= 2) throw error;
+        // Le dépôt a avancé (autre onglet, publication de la page) : relire la base puis rejouer la modification.
+        const revision = id ? items.find(x => x.id === id)?.revision : null;
+        const snapshot = await readSnapshot();
+        items = snapshot.records;
+        headSha = snapshot.head;
+        if (id && items.find(x => x.id === id)?.revision !== revision)
+          throw Error('Cette installation a été modifiée ailleurs entre-temps : vérifiez-la, puis recommencez.');
+      }
+    }
   } catch (error) {
-    conflict = error.status === 409 || error.status === 422;
-    if (conflict) ready = false;
     message(error.message, true);
     return false;
   } finally {
-    busy = false;
+    setBusy(false);
     render();
-    if (conflict) setTimeout(load, 0);
   }
 }
 
@@ -403,7 +435,11 @@ function ask(title, text, label = 'Confirmer', danger = false) {
     cancel.focus();
   });
 }
-function openRequest() { $('#requestBox').showModal(); $('#requestCode').focus(); }
+function openRequest() {
+  for (const element of document.querySelectorAll('#requestBox .dialog-message')) element.textContent = '';
+  $('#requestBox').showModal();
+  $('#requestCode').focus();
+}
 async function addRequest() {
   try {
     const code = JSON.parse($('#requestCode').value);
@@ -430,7 +466,13 @@ async function addRequest() {
       requestedFeatures: code.features ?? null, grantedFeatures: null,
       lastSeenAtUtc: null, clientLicenseStatus: 'Unknown', history: [],
     };
-    if (await change(async next => { next.unshift(record); return null; },
+    if (await change(async next => {
+      if (next.some(x => !x.archived && normalizeMachine(x.machineCode) === machineCode &&
+          x.installationId === installationId))
+        throw Error('Cette installation existe déjà ; utilisez sa ligne pour accorder ou révoquer la licence.');
+      next.unshift(record);
+      return null;
+    },
       'Demande enregistrée sur GitHub ; le poste peut rester hors ligne jusqu’à la décision.')) {
       $('#requestBox').close();
       $('#requestCode').value = '';
@@ -438,21 +480,27 @@ async function addRequest() {
   } catch (error) { message(error.message, true); }
 }
 async function decide(id, decision, renew = false) {
-  if (!ready || busy) return;
+  if (busy) return;
+  if (!ready) { message('Base GitHub non chargée : actualisez la liste (🔄) puis recommencez.', true); return; }
   const record = items.find(x => x.id === id);
   if (!record || record.archived) { message('Installation introuvable.', true); return; }
   const days = decision === 'approve15' ? 15 : decision === 'approve30' ? 30 : 0;
   const kind = days ? `Essai ${days} jours` : 'Permanente';
   const who = `${record.customerName || 'Abonné sans nom'} · ${record.phoneNumber || '-'}\nMachine : ${record.machineCode}`;
-  if (decision.startsWith('approve') && !renew && record.status === 'Approved' &&
-      record.kind === (days ? `Trial${days}` : 'Permanent')) {
+  const sameKind = record.status === 'Approved' && record.kind === (days ? `Trial${days}` : 'Permanent');
+  if (decision.startsWith('approve') && !renew && sameKind) {
     message('Cette licence est déjà accordée ; aucune échéance ne change.');
+    return;
+  }
+  if (decision === 'revoke' && record.status === 'Revoked') {
+    message('Cette licence est déjà révoquée.');
     return;
   }
   const start = renew ? new Date() : new Date(record.requestedAtUtc);
   const expiry = days ? new Date(start.getTime() + days * 86400000) : null;
   const title = decision === 'revoke' ? 'Révoquer la licence' :
-    decision === 'reject' ? 'Refuser la demande' : `${renew ? 'Renouveler' : 'Accorder'} : ${kind}`;
+    decision === 'reject' ? 'Refuser la demande'
+      : `${!renew ? 'Accorder' : sameKind ? 'Renouveler' : 'Changer le type'} : ${kind}`;
   const text = who + (decision === 'revoke'
     ? '\n\nLa licence sera retirée à la prochaine connexion du poste. Un poste hors ligne reste actif jusque-là.'
     : decision === 'reject' ? '\n\nLe poste restera sans licence.'
@@ -478,19 +526,28 @@ async function decide(id, decision, renew = false) {
     }
     x.history = [...(x.history || []), { atUtc: now,
       action: decision === 'revoke' ? 'Revoked' : decision === 'reject' ? 'Rejected' :
-        renew ? 'Renewed' : 'Approved',
+        renew && sameKind ? 'Renewed' : 'Approved',
       actor: 'GitHub', kind: x.kind, expiresAtUtc: x.expiresAtUtc }];
     return publication(x);
-  }, 'Décision enregistrée sur GitHub. Le poste la recevra à sa prochaine connexion.');
+  }, 'Décision enregistrée sur GitHub. Le poste la recevra à sa prochaine connexion.', id);
+}
+async function changeKind(decision) {
+  const record = items.find(x => x.id === selectedId);
+  if (!record) return;
+  $('#details').close();
+  // Une installation déjà décidée change de type à partir d'aujourd'hui ; une demande en attente part de sa date.
+  await decide(record.id, decision, decision !== 'approve' && decision !== 'revoke' && record.status !== 'Pending');
 }
 async function removeActivation(id) {
   const record = items.find(x => x.id === id);
-  if (!record || !ready || busy) return;
+  if (!record || busy) return;
+  if (!ready) { message('Base GitHub non chargée : actualisez la liste (🔄) puis recommencez.', true); return; }
   if (!await ask('Archiver cette installation',
     `${record.customerName || 'Abonné sans nom'} · ${record.machineCode}\n\nLa licence sera révoquée ; sa trace restera chiffrée pour empêcher la réutilisation de l'ancien code.`,
     'Archiver', true)) return;
   await change(async next => {
     const x = next.find(item => item.id === id);
+    if (!x) throw Error('Installation introuvable.');
     const now = new Date().toISOString();
     x.status = 'Revoked';
     x.archived = true;
@@ -499,12 +556,14 @@ async function removeActivation(id) {
     x.history = [...(x.history || []), { atUtc: now, action: 'Archived',
       actor: 'GitHub', kind: x.kind, expiresAtUtc: x.expiresAtUtc }];
     return publication(x);
-  }, 'Installation archivée et révocation publiée.');
+  }, 'Installation archivée et révocation publiée.', id);
 }
 function details(id) {
   const record = items.find(x => x.id === id);
   if (!record) return;
   selectedId = id;
+  for (const element of document.querySelectorAll('#details .dialog-message')) element.textContent = '';
+  $('#kindBox')?.classList.toggle('hidden', !!record.archived);
   $('#editName').value = record.customerName || '';
   $('#editPhone').value = record.phoneNumber || '';
   const requested = record.requestedFeatures, granted = effectiveFeatures(record);
@@ -532,7 +591,7 @@ async function saveContact() {
     record.customerName = name || null;
     record.phoneNumber = phone || null;
     return null;
-  }, 'Coordonnées chiffrées enregistrées sans changer la licence.')) $('#details').close();
+  }, 'Coordonnées chiffrées enregistrées sans changer la licence.', selectedId)) $('#details').close();
 }
 async function saveFeatures() {
   if (!selectedId) return;
@@ -545,7 +604,7 @@ async function saveFeatures() {
     record.history = [...(record.history || []), { atUtc: new Date().toISOString(),
       action: 'FeaturesUpdated', actor: 'GitHub', kind: record.kind, expiresAtUtc: record.expiresAtUtc }];
     return record.status === 'Approved' ? publication(record) : null;
-  }, 'Options accordées enregistrées et nouvelle licence signée.')) $('#details').close();
+  }, 'Options accordées enregistrées et nouvelle licence signée.', selectedId)) $('#details').close();
 }
 async function copyId() {
   try { await navigator.clipboard.writeText(selectedId); message('ID copié.'); }

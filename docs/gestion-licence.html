@@ -66,9 +66,10 @@ button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
 
 <section id="login">
   <form onsubmit="return login(event)" autocomplete="off">
-    <h1>🔑 Licences hébergées sur GitHub</h1>
-    <p class="sub">Le serveur installé sur un poste n'est plus nécessaire pour administrer les licences. Utilisez un jeton GitHub limité à ce dépôt (Contents : lecture/écriture), puis sélectionnez la clé de signature d'origine.</p>
-    <label for="githubToken">Jeton GitHub (non mémorisé)</label><input id="githubToken" type="password" required autocomplete="off">
+    <h1>🔑 Accès développeur aux licences</h1>
+    <p class="sub">La page fonctionne même lorsque le poste serveur est éteint. Une clé de licence d'abonné n'ouvre pas l'administration : seul un compte GitHub autorisé sur le dépôt et la clé privée de signature d'origine y donnent accès.</p>
+    <p class="sub">Connectez-vous avec votre identifiant et mot de passe <strong>sur GitHub uniquement</strong>, puis <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener noreferrer">créez un jeton limité au dépôt des licences</a> (Contents : lecture/écriture). Ne saisissez jamais votre mot de passe GitHub sur cette page.</p>
+    <label for="githubToken">Jeton GitHub du développeur (non mémorisé)</label><input id="githubToken" type="password" required autocomplete="off">
     <label for="signingKey">Clé privée de signature (.pk8, reste sur cet appareil)</label>
     <input id="signingKey" type="file" accept=".pk8" required>
     <div id="loginError" class="error hidden" role="alert"></div>

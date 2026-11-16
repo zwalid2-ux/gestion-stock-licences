@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://api.github.com" crossorigin>
 <title>STOKY Pro - Licences (GitHub)</title>
 <style>
 *{box-sizing:border-box}
@@ -35,11 +36,16 @@ button:disabled{opacity:.5;cursor:wait}.error{color:#b91c1c!important}
 .dialog-message{margin-top:10px;min-height:18px;font-size:13px;font-weight:600;color:#166534}
 dialog fieldset{margin-top:12px;border:1px solid #d9dee7;border-radius:8px;padding:8px 12px}
 #login{display:flex;justify-content:center;align-items:center;min-height:70vh;padding:12px}
-#login form{background:white;padding:24px 22px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08);width:100%;max-width:430px}
+.login-card{background:white;padding:24px 22px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.08);width:100%;max-width:430px}
 #login h1{font-size:19px;margin:0 0 6px}#login p.sub{margin:0 0 14px;color:#5b6472;font-size:13px}
 #login label{display:block;font-weight:600;margin:12px 0 4px;font-size:13px}#login input{width:100%}
 #login button{margin-top:16px;width:100%;padding:11px;background:#1d4ed8;color:white;font-weight:600;font-size:15px}
 #login .error{background:#fee2e2;color:#991b1b;padding:8px 10px;border-radius:6px;font-size:13px;margin-top:12px}
+#loginStatus{min-height:18px;margin-top:10px;font-size:13px;color:#5b6472}
+#linkState{min-height:16px;margin-top:8px;font-size:12px}.link-ok{color:#166534}.link-slow{color:#b45309}
+#login details{margin-top:14px;border-top:1px solid #dbe1ea;padding-top:12px}
+#login summary{cursor:pointer;color:#1d4ed8;font-weight:600;font-size:13px}#login details p.sub{margin-top:10px}
+#login details button{background:#475569}
 #serverState{font-size:12px;color:#cbd5e1;overflow-wrap:anywhere}
 .hidden{display:none!important}
 @media (max-width:900px){
@@ -61,23 +67,38 @@ dialog fieldset{margin-top:12px;border:1px solid #d9dee7;border-radius:8px;paddi
 <header>
   <div><b>STOKY Pro</b> — licences<br><small id="serverState">GitHub : connexion requise</small></div>
   <div id="headerActions" class="hidden">
-    <button type="button" class="ic" onclick="load()" title="Actualiser les licences">🔄</button>
+    <button type="button" class="ic" onclick="load(true)" title="Actualiser les licences">🔄</button>
+    <button type="button" class="ic" onclick="openAccess()" title="Connexion par identifiant et mot de passe">🔐</button>
     <button type="button" class="ic" onclick="logout()" title="Déconnexion">🚪</button>
   </div>
 </header>
 
 <section id="login">
-  <form onsubmit="return login(event)" autocomplete="off">
-    <h1>🔑 Accès développeur aux licences</h1>
-    <p class="sub">La page fonctionne même lorsque le poste serveur est éteint. Une clé de licence d'abonné n'ouvre pas l'administration : seul un compte GitHub autorisé sur le dépôt et la clé privée de signature d'origine y donnent accès.</p>
-    <p class="sub">Connectez-vous avec votre identifiant et mot de passe <strong>sur GitHub uniquement</strong>, puis <a href="https://github.com/settings/personal-access-tokens/new?name=STOKY+licences&amp;contents=write" target="_blank" rel="noopener noreferrer">créez un jeton à accès fin</a> : <strong>Repository access → Only select repositories → gestion-stock-licences</strong>, puis <strong>Repository permissions → Contents → Read and write</strong>. Un jeton en lecture seule affiche la liste mais ne peut rien enregistrer (erreur 403). Ne saisissez jamais votre mot de passe GitHub sur cette page.</p>
-    <label for="githubToken">Jeton GitHub du développeur (non mémorisé)</label><input id="githubToken" type="password" required autocomplete="off">
-    <label for="signingKey">Clé privée de signature (.pk8, reste sur cet appareil)</label>
-    <input id="signingKey" type="file" accept=".pk8" required>
+  <div class="login-card">
+    <h1>🔑 Administration des licences</h1>
+    <form onsubmit="return loginWithPassword(event)">
+      <label for="loginUser">Identifiant</label>
+      <input id="loginUser" required maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false">
+      <label for="loginPassword">Mot de passe</label>
+      <input id="loginPassword" type="password" required autocomplete="current-password">
+      <button type="submit" id="passwordButton">Se connecter</button>
+    </form>
+    <div id="loginStatus" role="status"></div>
     <div id="loginError" class="error hidden" role="alert"></div>
-    <button type="submit" id="loginButton">Ouvrir les licences</button>
-    <p><small>La base client est chiffrée avant publication ; les codes signés ne contiennent ni nom ni téléphone. Sauvegardez la clé hors de GitHub et importez-la sur tout autre appareil administrateur autorisé.</small></p>
-  </form>
+    <div id="linkState" role="status"></div>
+    <details>
+      <summary>Première connexion ou jeton expiré</summary>
+      <form onsubmit="return login(event)" autocomplete="off">
+        <p class="sub">À faire une seule fois : ouvrez les licences avec un jeton GitHub et la clé de signature, puis créez votre identifiant et votre mot de passe avec le bouton 🔐. Ensuite, l'identifiant et le mot de passe suffisent, sur n'importe quel appareil, même si le poste serveur est éteint.</p>
+        <p class="sub"><a href="https://github.com/settings/personal-access-tokens/new?name=STOKY+licences&amp;contents=write" target="_blank" rel="noopener noreferrer">Créez un jeton à accès fin</a> sur GitHub : <strong>Repository access → Only select repositories → gestion-stock-licences</strong>, puis <strong>Repository permissions → Contents → Read and write</strong>, avec une expiration longue. Ne saisissez jamais votre mot de passe GitHub sur cette page.</p>
+        <label for="githubToken">Jeton GitHub du développeur</label><input id="githubToken" type="password" required autocomplete="off">
+        <label for="signingKey">Clé privée de signature (.pk8, reste sur cet appareil)</label>
+        <input id="signingKey" type="file" accept=".pk8" required>
+        <button type="submit" id="loginButton">Ouvrir avec le jeton et la clé</button>
+      </form>
+    </details>
+    <p><small>La base client est chiffrée avant publication ; les codes signés ne contiennent ni nom ni téléphone. Une clé de licence d'abonné n'ouvre pas cette page.</small></p>
+  </div>
 </section>
 
 <main id="app" class="hidden">
@@ -92,7 +113,7 @@ dialog fieldset{margin-top:12px;border:1px solid #d9dee7;border-radius:8px;paddi
     <select id="kindFilter" onchange="render()"><option value="">Tous les types</option><option>Permanent</option><option>Trial15</option><option>Trial30</option></select>
     <label><input id="duplicates" type="checkbox" onchange="render()"> Doublons</label>
     <label><input id="archived" type="checkbox" onchange="render()"> Archives</label>
-    <button class="neutral ic" onclick="load()" title="Actualiser la liste">🔄</button><span id="summary"></span><span id="pendingCount" class="hidden"></span>
+    <button class="neutral ic" onclick="load(true)" title="Actualiser la liste">🔄</button><span id="summary"></span><span id="pendingCount" class="hidden"></span>
   </div>
   <div id="message" role="status"></div>
   <div class="table-wrap">
@@ -129,8 +150,19 @@ dialog fieldset{margin-top:12px;border:1px solid #d9dee7;border-radius:8px;paddi
     <div style="margin-top:12px"><button class="neutral" onclick="saveContact()" title="Enregistrer les coordonnées">💾 Enregistrer</button><button class="approve" onclick="saveFeatures()" title="Enregistrer les options accordées">⚙️ Options</button><button class="info" onclick="copyId()" title="Copier l'ID de demande">📋 ID</button><button class="info" onclick="$('#details').close()">✖ Fermer</button></div>
         <div class="dialog-message" role="status"></div>
   </dialog>
+  <dialog id="accessBox">
+    <h2>Connexion par identifiant et mot de passe</h2>
+    <p>Choisissez un identifiant et un mot de passe pour ouvrir cette page sans jeton ni fichier de clé, sur n'importe quel appareil.</p>
+    <p class="warn">Le jeton GitHub et la clé de signature de cette session seront chiffrés avec ce mot de passe, puis enregistrés dans le dépôt public des licences. Ce mot de passe devient leur seule protection : utilisez-en un long, que vous n'employez nulle part ailleurs (par exemple une phrase de quatre mots ou plus). Un mot de passe faible permettrait à un tiers de fabriquer des licences.</p>
+    <label>Identifiant<input id="accessUser" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+    <label>Nouveau mot de passe (12 caractères minimum)<input id="accessPassword" type="password" autocomplete="new-password"></label>
+    <label>Confirmer le mot de passe<input id="accessConfirm" type="password" autocomplete="new-password"></label>
+    <div style="margin-top:12px"><button class="approve" onclick="saveAccess()" title="Créer ou remplacer la connexion par mot de passe">🔐 Enregistrer</button><button class="revoke" onclick="deleteAccess()" title="Retirer de GitHub la connexion de cet identifiant">🗑 Supprimer</button><button class="info" onclick="$('#accessBox').close()">✖ Fermer</button></div>
+    <small>Pour changer de mot de passe ou après un nouveau jeton GitHub, enregistrez de nouveau le même identifiant.</small>
+    <div class="dialog-message" role="status"></div>
+  </dialog>
 </main>
 <!-- Incrémenter v à chaque modification du script : GitHub Pages le garde en cache 10 minutes. -->
-<script src="gestion-licence.js?v=2" defer></script>
+<script src="gestion-licence.js?v=3" defer></script>
 </body>
 </html>

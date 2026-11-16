@@ -6,6 +6,12 @@ const API = `https://api.github.com/repos/${REPO}`;
 const BRANCH = 'main';
 const DATABASE = 'admin/activations.v1.enc.json';
 const KEY_INFO = 'STOKY GitHub licence store v1';
+// Accès par identifiant et mot de passe : le jeton et la clé de signature sont chiffrés avec une clé dérivée du mot
+// de passe (PBKDF2) puis publiés ; sans le mot de passe, le fichier publié ne révèle ni l'un ni l'autre.
+const ACCESS_INFO = 'STOKY licence access v1:';
+const ACCESS_ITERATIONS = 600000;
+const ACCESS_PASSWORD_LENGTH = 12;
+const CACHE_KEY = 'stoky-licence-snapshot-v1';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const FEATURES = [
@@ -29,7 +35,7 @@ const kindNames = { Permanent: 'Permanente', Trial15: 'Essai 15 jours',
 
 let items = [], selectedId = null, headSha = null, busy = false, loading = false;
 let githubToken = '', signingKey = null, keyBytes = null, publicKey = null, pollTimer = null;
-let ready = false;
+let ready = false, accessUser = '';
 
 const base64 = bytes => {
   let value = '';
@@ -76,7 +82,12 @@ function message(text, error = false) {
 }
 function setBusy(value) {
   busy = value;
-  for (const button of document.querySelectorAll('#details button, #requestBox button')) button.disabled = value;
+  for (const button of document.querySelectorAll('#details button, #requestBox button, #accessBox button'))
+    button.disabled = value;
+}
+function progress(text) {
+  if (!$('#login').classList.contains('hidden')) $('#loginStatus').textContent = text;
+  else $('#serverState').textContent = text;
 }
 function clearCredentials() {
   githubToken = '';
@@ -86,29 +97,76 @@ function clearCredentials() {
   keyBytes = null;
   headSha = null;
   ready = false;
+  accessUser = '';
 }
 
-async function github(method, path, body) {
-  const response = await fetch(API + path, {
-    method, cache: 'no-store',
+// Depuis certains réseaux, une tentative de connexion vers GitHub sur plusieurs reste sans réponse une vingtaine de
+// secondes. Chaque requête a donc un délai court et jusqu'à trois essais ; pour une lecture, l'essai suivant part
+// après quelques secondes sans attendre l'échec du précédent, et la première réponse gagne.
+const RETRY_AFTER = 3000;
+function request(url, options, timeout, { overlap = false, quiet = false } = {}) {
+  return new Promise((resolve, reject) => {
+    const controllers = [];
+    let settled = false, started = 0, failures = 0;
+    const start = () => {
+      if (settled || started >= 3) return;
+      if (++started > 1 && !quiet) progress(`GitHub ne répond pas, nouvel essai ${started}/3…`);
+      const controller = new AbortController();
+      controllers.push(controller);
+      const limit = setTimeout(() => controller.abort(), timeout);
+      (async () => {
+        const response = await fetch(url, { ...options, cache: 'no-store', signal: controller.signal });
+        const text = await response.text();
+        let data = null;
+        try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+        return { response, data };
+      })().then(result => {
+        clearTimeout(limit);
+        if (settled) return;
+        settled = true;
+        for (const other of controllers) if (other !== controller) other.abort();
+        resolve(result);
+      }, error => {
+        clearTimeout(limit);
+        if (settled) return;
+        if (++failures >= 3) {
+          settled = true;
+          const failure = new Error(error.name === 'AbortError'
+            ? 'GitHub ne répond pas (délai dépassé). Vérifiez la connexion Internet, puis réessayez.'
+            : 'GitHub est injoignable. Vérifiez la connexion Internet, puis réessayez.');
+          failure.network = true;
+          reject(failure);
+        } else if (failures === started) start();
+      });
+      if (overlap) setTimeout(start, RETRY_AFTER);
+    };
+    start();
+  });
+}
+
+async function github(method, path, body, accept = 'application/vnd.github+json', anonymous = false) {
+  const { response, data } = await request(API + path, {
+    method,
     headers: {
-      Accept: 'application/vnd.github+json',
-      Authorization: `Bearer ${githubToken}`,
+      Accept: accept,
+      ...(anonymous ? {} : { Authorization: `Bearer ${githubToken}` }),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-  });
+  }, method === 'GET' ? 9000 : 25000, { overlap: method === 'GET', quiet: anonymous });
   if (!response.ok) {
-    const detail = await response.json().catch(() => null);
-    const text = detail?.message || response.statusText;
+    const text = data?.message || response.statusText;
     const error = new Error(
       response.status === 403 && /not accessible by|must have (admin|push)|write access/i.test(text) ? TOKEN_HELP
-        : response.status === 401 ? 'Jeton GitHub refusé ou expiré : créez-en un nouveau.'
+        : response.status === 401 ? (accessUser
+          ? 'Le jeton GitHub enregistré avec cet identifiant a expiré : ouvrez « Première connexion ou jeton expiré », ' +
+            'connectez-vous avec un nouveau jeton et la clé, puis recréez la connexion par mot de passe (🔐).'
+          : 'Jeton GitHub refusé ou expiré : créez-en un nouveau.')
           : `GitHub (${response.status}) : ${text}`);
     error.status = response.status;
     throw error;
   }
-  return response.status === 204 ? null : response.json();
+  return data;
 }
 
 async function aesKey(salt) {
@@ -149,83 +207,234 @@ async function encrypt(records) {
     ciphertext: base64(new Uint8Array(ciphertext)) };
 }
 
-async function readSnapshot() {
-  const ref = await github('GET', `/git/ref/heads/${BRANCH}`);
-  const head = ref.object.sha;
-  let file;
+function cachedEnvelope(head) {
   try {
-    file = await github('GET', `/contents/${DATABASE}?ref=${encodeURIComponent(head)}`);
-  } catch (error) {
-    if (error.status === 404)
-      throw Error("Base GitHub absente : exportez d'abord la base du serveur avec --export-github. Aucune base vide ne sera créée.");
-    throw error;
+    const cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+    return cached?.head === head && cached.envelope?.version === 1 ? cached.envelope : null;
+  } catch { return null; }
+}
+function rememberEnvelope(head, envelope) {
+  // La base publiée est déjà chiffrée : la garder ici évite de retélécharger une version inchangée.
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ head, envelope })); } catch { }
+}
+// La base publiée est publique et chiffrée : la page la télécharge dès son ouverture, sans jeton, pendant la
+// saisie de l'identifiant. La connexion n'a alors plus qu'à la déchiffrer.
+let earlySnapshot = null, earlyAccess = null, warming = false;
+async function warmUp() {
+  if (warming || githubToken || (earlySnapshot && Date.now() - earlySnapshot.at < 60000)) return;
+  warming = true;
+  const state = $('#linkState');
+  let slow = false;
+  try {
+    for (let round = 0; round < 6 && !githubToken; round++) {
+      try {
+        const head = (await github('GET', `/git/ref/heads/${BRANCH}`, undefined, undefined, true)).object.sha;
+        const envelope = cachedEnvelope(head) || await github('GET',
+          `/contents/${DATABASE}?ref=${encodeURIComponent(head)}`, undefined, 'application/vnd.github.raw+json', true);
+        if (envelope?.version === 1) {
+          rememberEnvelope(head, envelope);
+          earlySnapshot = { head, envelope, at: Date.now() };
+        }
+        state.textContent = '● GitHub joignable';
+        state.className = 'link-ok';
+        return;
+      } catch (error) {
+        // Limite de requêtes anonymes ou autre refus : la connexion fera elle-même ses lectures.
+        if (!error.network) { state.textContent = ''; return; }
+        slow = true;
+        state.textContent = '● GitHub répond mal depuis ce réseau : nouvelle tentative en cours…';
+        state.className = 'link-slow';
+      }
+    }
+    if (slow) state.textContent = '● GitHub répond mal depuis ce réseau : la connexion peut demander plusieurs essais.';
+  } finally { warming = false; }
+}
+function prepareAccess() {
+  const user = normalizeUser($('#loginUser').value);
+  if (user && !githubToken && earlyAccess?.user !== user)
+    earlyAccess = { user, file: fetchAccessFile(user, true).catch(() => null) };
+}
+async function readSnapshot() {
+  const early = !ready && earlySnapshot && Date.now() - earlySnapshot.at < 120000 ? earlySnapshot : null;
+  earlySnapshot = null;
+  // Une version lue il y a moins de deux minutes suffit pour afficher : chaque enregistrement revérifie la branche.
+  const head = early ? early.head : (await github('GET', `/git/ref/heads/${BRANCH}`)).object.sha;
+  if (ready && head === headSha) return { head, records: items };
+  let envelope = early?.envelope || cachedEnvelope(head);
+  if (!envelope) {
+    try {
+      envelope = await github('GET', `/contents/${DATABASE}?ref=${encodeURIComponent(head)}`,
+        undefined, 'application/vnd.github.raw+json');
+    } catch (error) {
+      if (error.status === 404)
+        throw Error("Base GitHub absente : exportez d'abord la base du serveur avec --export-github. Aucune base vide ne sera créée.");
+      throw error;
+    }
+    if (!envelope || typeof envelope !== 'object')
+      throw Error('GitHub a renvoyé un format de base inattendu.');
   }
-  if (file.encoding !== 'base64' || typeof file.content !== 'string')
-    throw Error('GitHub a renvoyé un format de base inattendu.');
-  const records = await decrypt(JSON.parse(decoder.decode(unbase64(file.content))));
+  const records = await decrypt(envelope);
   if (!Array.isArray(records) || records.some(record =>
     !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(record.id) ||
     !/^[0-9a-f]{16}$/i.test(normalizeMachine(record.machineCode)) ||
     typeof record.installationId !== 'string' || !record.installationId.length ||
     !Number.isInteger(record.revision) || record.revision < 0))
     throw Error('La base GitHub contient des installations invalides ; aucune modification ne sera faite.');
+  rememberEnvelope(head, envelope);
   return { head, records };
 }
 
-async function login(event) {
-  event.preventDefault();
-  const button = $('#loginButton');
-  button.disabled = true;
+const normalizeUser = value => (value || '').trim().toLowerCase();
+async function accessPath(user) {
+  const hash = new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(ACCESS_INFO + user)));
+  return `access/${Array.from(hash.slice(0, 16), byte => byte.toString(16).padStart(2, '0')).join('')}.json`;
+}
+async function accessKey(user, password, salt, iterations) {
+  const material = await crypto.subtle.importKey('raw', encoder.encode(`${user}\u0000${password}`),
+    'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
+    material, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function sealAccess(user, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const nonce = crypto.getRandomValues(new Uint8Array(12));
+  const key = await accessKey(user, password, salt, ACCESS_ITERATIONS);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv: nonce, additionalData: encoder.encode(ACCESS_INFO + user) }, key,
+    encoder.encode(JSON.stringify({ token: githubToken, key: base64(keyBytes) })));
+  return { version: 1, kdf: 'PBKDF2-SHA256', iterations: ACCESS_ITERATIONS, salt: base64(salt),
+    nonce: base64(nonce), ciphertext: base64(new Uint8Array(ciphertext)) };
+}
+async function openAccessFile(file, user, password) {
+  if (file?.version !== 1 || file.kdf !== 'PBKDF2-SHA256' || !Number.isInteger(file.iterations) ||
+      file.iterations < 100000 || file.iterations > 10000000 || typeof file.salt !== 'string' ||
+      typeof file.nonce !== 'string' || typeof file.ciphertext !== 'string')
+    throw Error("Format de l'accès par mot de passe inconnu ou endommagé.");
+  try {
+    const key = await accessKey(user, password, unbase64(file.salt), file.iterations);
+    const secret = JSON.parse(decoder.decode(await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: unbase64(file.nonce), additionalData: encoder.encode(ACCESS_INFO + user) },
+      key, unbase64(file.ciphertext))));
+    if (typeof secret.token !== 'string' || typeof secret.key !== 'string') throw Error();
+    return secret;
+  } catch { throw Error('Identifiant ou mot de passe incorrect.'); }
+}
+async function fetchAccessFile(user, quiet = false) {
+  const path = await accessPath(user);
+  let unreachable = 0, pending = 2;
+  // En parallèle : le site de la page et l'API GitHub (à jour dès la création de l'accès) ; la première réponse valide gagne.
+  const file = await new Promise(resolve => {
+    for (const [url, headers] of [[`${path}?t=${Date.now()}`, {}],
+      [`${API}/contents/docs/${path}?ref=${BRANCH}`, { Accept: 'application/vnd.github.raw+json' }]])
+      request(url, { headers }, 9000, { overlap: true, quiet })
+        .then(({ response, data }) => response.ok && data?.version === 1 ? data : null, () => { unreachable++; return null; })
+        .then(found => { if (found) resolve(found); else if (--pending === 0) resolve(null); });
+  });
+  if (file) return file;
+  throw Error(unreachable
+    ? 'GitHub est injoignable. Vérifiez la connexion Internet, puis réessayez.'
+    : 'Identifiant inconnu. Si la connexion par mot de passe n\'a pas encore été créée, ouvrez ' +
+      '« Première connexion ou jeton expiré ».');
+}
+
+const writeCheck = () => github('POST', '/git/blobs',
+  { content: base64(encoder.encode('STOKY write check')), encoding: 'base64' });
+async function openSession(checkWriteFirst) {
+  signingKey = await crypto.subtle.importKey('pkcs8', keyBytes,
+    { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+  progress('Lecture des licences sur GitHub…');
+  // Un objet Git non référencé vérifie le droit d'écriture réel du jeton. À la première connexion, il est attendu
+  // avant d'ouvrir ; avec un accès par mot de passe (jeton déjà vérifié à sa création), il ne retarde pas l'affichage.
+  const probe = writeCheck();
+  probe.catch(() => { });
+  const snapshot = await readSnapshot();
+  if (checkWriteFirst) await probe;
+  items = snapshot.records;
+  headSha = snapshot.head;
+  ready = true;
+  for (const id of ['githubToken', 'signingKey', 'loginPassword']) $(`#${id}`).value = '';
+  $('#login').classList.add('hidden');
+  $('#app').classList.remove('hidden');
+  $('#headerActions').classList.remove('hidden');
+  $('#serverState').textContent = 'GitHub connecté · base chiffrée chargée';
+  render();
+  if (!accessUser)
+    message('Astuce : le bouton 🔐 crée une connexion par identifiant et mot de passe, sans jeton ni fichier de clé.');
+  if (!pollTimer) pollTimer = setInterval(load, 15000);
+  if (!checkWriteFirst) {
+    const token = githubToken;
+    probe.catch(error => {
+      // Coupure passagère : le premier enregistrement le dira. Jeton expiré ou en lecture seule : retour à la connexion.
+      if (error.network || token !== githubToken) return;
+      logout();
+      $('#loginError').textContent = error.message;
+      $('#loginError').classList.remove('hidden');
+    });
+  }
+}
+async function signIn(prepare, checkWriteFirst) {
+  const buttons = document.querySelectorAll('#login button[type=submit]');
+  for (const button of buttons) button.disabled = true;
   $('#loginError').classList.add('hidden');
   try {
     if (!crypto?.subtle) throw Error('Un navigateur HTTPS récent est requis pour signer les licences.');
-    const file = $('#signingKey').files[0];
-    if (!file || file.size > 16384) throw Error('Choisissez la clé .pk8 du serveur (16 Ko maximum).');
-    githubToken = $('#githubToken').value.trim();
-    keyBytes = new Uint8Array(await file.arrayBuffer());
-    signingKey = await crypto.subtle.importKey('pkcs8', keyBytes,
-      { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
-    const repo = await github('GET', '');
-    if (!repo.permissions?.push)
-      throw Error("Ce compte GitHub n'a pas le droit d'écrire dans le dépôt des licences.");
-    // Le droit du compte ne dit rien du jeton : un objet Git non référencé vérifie son droit d'écriture réel.
-    await github('POST', '/git/blobs',
-      { content: base64(encoder.encode('STOKY write check')), encoding: 'base64' });
-    const snapshot = await readSnapshot();
-    items = snapshot.records;
-    headSha = snapshot.head;
-    ready = true;
-    $('#githubToken').value = '';
-    $('#signingKey').value = '';
-    $('#serverState').textContent = 'GitHub connecté · base chiffrée chargée';
-    $('#login').classList.add('hidden');
-    $('#app').classList.remove('hidden');
-    $('#headerActions').classList.remove('hidden');
-    render();
-    if (!pollTimer) pollTimer = setInterval(load, 15000);
+    await prepare();
+    await openSession(checkWriteFirst);
   } catch (error) {
     clearCredentials();
     $('#serverState').textContent = 'GitHub : connexion requise';
     $('#loginError').textContent = error.message;
     $('#loginError').classList.remove('hidden');
-  } finally { button.disabled = false; }
+    warmUp();
+  } finally {
+    $('#loginStatus').textContent = '';
+    for (const button of buttons) button.disabled = false;
+  }
   return false;
+}
+function loginWithPassword(event) {
+  event.preventDefault();
+  return signIn(async () => {
+    const user = normalizeUser($('#loginUser').value), password = $('#loginPassword').value;
+    progress('Recherche de votre accès…');
+    const file = (earlyAccess?.user === user ? await earlyAccess.file : null) || await fetchAccessFile(user);
+    // Gardé pour un nouvel essai après une faute de frappe dans le mot de passe.
+    earlyAccess = { user, file: Promise.resolve(file) };
+    progress('Vérification du mot de passe…');
+    const secret = await openAccessFile(file, user, password);
+    githubToken = secret.token;
+    keyBytes = unbase64(secret.key);
+    accessUser = user;
+  }, false);
+}
+function login(event) {
+  event.preventDefault();
+  return signIn(async () => {
+    const file = $('#signingKey').files[0];
+    if (!file || file.size > 16384) throw Error('Choisissez la clé .pk8 du serveur (16 Ko maximum).');
+    githubToken = $('#githubToken').value.trim();
+    keyBytes = new Uint8Array(await file.arrayBuffer());
+  }, true);
 }
 function logout() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = null;
   clearCredentials();
   items = [];
-  $('#githubToken').value = '';
-  $('#signingKey').value = '';
+  earlyAccess = null;
+  $('#rows').innerHTML = '';
+  for (const id of ['githubToken', 'signingKey', 'loginPassword']) $(`#${id}`).value = '';
   $('#app').classList.add('hidden');
   $('#headerActions').classList.add('hidden');
   $('#login').classList.remove('hidden');
   $('#serverState').textContent = 'GitHub : connexion requise';
+  warmUp();
 }
-async function load() {
-  if (!githubToken || busy || loading || $('#confirmBox').open || $('#requestBox').open || $('#details').open) return;
+async function load(manual = false) {
+  if (!githubToken || busy || loading || $('#confirmBox').open || $('#requestBox').open ||
+      $('#details').open || $('#accessBox').open) return;
   loading = true;
+  if (manual) progress('Actualisation…');
   try {
     const snapshot = await readSnapshot();
     items = snapshot.records;
@@ -234,9 +443,12 @@ async function load() {
     $('#serverState').textContent = 'GitHub connecté · base chiffrée chargée';
     render();
   } catch (error) {
-    ready = false;
-    $('#serverState').textContent = 'GitHub : actualisation échouée';
-    message(error.message, true);
+    // Une coupure passagère ne bloque pas la page : la liste affichée reste utilisable et chaque enregistrement
+    // revérifie de toute façon la version de la base sur GitHub.
+    if (!error.network) ready = false;
+    $('#serverState').textContent = error.network
+      ? 'GitHub momentanément injoignable · nouvel essai automatique' : 'GitHub : actualisation échouée';
+    if (manual || !error.network) message(error.message, true);
     render();
   } finally { loading = false; }
 }
@@ -338,6 +550,7 @@ async function change(mutator, success, id = null) {
     return false;
   } finally {
     setBusy(false);
+    if (ready) $('#serverState').textContent = 'GitHub connecté · base chiffrée chargée';
     render();
   }
 }
@@ -610,3 +823,81 @@ async function copyId() {
   try { await navigator.clipboard.writeText(selectedId); message('ID copié.'); }
   catch (error) { message('Copie impossible : ' + error.message, true); }
 }
+
+function openAccess() {
+  for (const element of document.querySelectorAll('#accessBox .dialog-message')) element.textContent = '';
+  $('#accessUser').value = accessUser;
+  $('#accessPassword').value = $('#accessConfirm').value = '';
+  $('#accessBox').showModal();
+  $(accessUser ? '#accessPassword' : '#accessUser').focus();
+}
+async function accessFileSha(path) {
+  try { return (await github('GET', `/contents/docs/${path}?ref=${BRANCH}`)).sha; }
+  catch (error) { if (error.status === 404) return null; throw error; }
+}
+async function accessChange(action, success) {
+  if (busy) return;
+  if (!ready) { message('Base GitHub non chargée : fermez cette fenêtre, actualisez la liste (🔄) puis recommencez.', true); return; }
+  setBusy(true);
+  message('Enregistrement sur GitHub…');
+  try {
+    if (await action() === false) return;
+    // La publication a créé un commit : la liste repart de cette version.
+    const snapshot = await readSnapshot();
+    items = snapshot.records;
+    headSha = snapshot.head;
+    $('#accessPassword').value = $('#accessConfirm').value = '';
+    message(success);
+  } catch (error) {
+    message(error.message, true);
+  } finally {
+    setBusy(false);
+    $('#serverState').textContent = 'GitHub connecté · base chiffrée chargée';
+    render();
+  }
+}
+function saveAccess() {
+  const user = normalizeUser($('#accessUser').value), password = $('#accessPassword').value;
+  if (!/^[a-z0-9._-]{3,40}$/.test(user)) {
+    message('Identifiant : 3 à 40 caractères parmi les lettres sans accent, chiffres, point, tiret et tiret bas.', true);
+    return;
+  }
+  if (password.length < ACCESS_PASSWORD_LENGTH) {
+    message(`Le mot de passe doit contenir au moins ${ACCESS_PASSWORD_LENGTH} caractères.`, true);
+    return;
+  }
+  if (password !== $('#accessConfirm').value) { message('Les deux mots de passe ne correspondent pas.', true); return; }
+  return accessChange(async () => {
+    const path = await accessPath(user);
+    const file = await sealAccess(user, password);
+    await github('PUT', `/contents/docs/${path}`, {
+      message: 'Update password-protected licence administration access',
+      content: base64(encoder.encode(JSON.stringify(file, null, 2) + '\n')),
+      branch: BRANCH, ...(await accessFileSha(path).then(sha => sha ? { sha } : {})),
+    });
+    accessUser = user;
+    earlyAccess = null;
+  }, `Connexion par mot de passe enregistrée pour « ${user} ». Elle est utilisable tout de suite ` +
+     '(jusqu\'à une minute après sa création).');
+}
+async function deleteAccess() {
+  const user = normalizeUser($('#accessUser').value);
+  if (!user) { message("Indiquez l'identifiant à supprimer.", true); return; }
+  if (!await ask('Supprimer la connexion par mot de passe',
+    `Identifiant : ${user}\n\nLe jeton et la clé chiffrés seront retirés de GitHub. La connexion avec le jeton et le fichier de clé reste possible.`,
+    'Supprimer', true)) return;
+  return accessChange(async () => {
+    const path = await accessPath(user);
+    const sha = await accessFileSha(path);
+    if (!sha) { message(`Aucune connexion par mot de passe pour « ${user} ».`, true); return false; }
+    await github('DELETE', `/contents/docs/${path}`, {
+      message: 'Remove password-protected licence administration access', sha, branch: BRANCH });
+    if (accessUser === user) accessUser = '';
+  }, `Connexion par mot de passe supprimée pour « ${user} ».`);
+}
+
+// Dès l'ouverture : la base chiffrée et le fichier d'accès de l'identifiant saisi sont préparés pendant la frappe.
+$('#loginUser').addEventListener('change', prepareAccess);
+$('#loginPassword').addEventListener('focus', () => { prepareAccess(); warmUp(); });
+setTimeout(prepareAccess, 600);
+warmUp();
